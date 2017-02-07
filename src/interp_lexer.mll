@@ -35,28 +35,18 @@ rule token = parse
       (* Use a phony position for the second piece, because it doesn't exist
          in the original code. *)
       {
-        prerr_endline @@ Lexing.lexeme lexbuf;
-        let loc' = { Location.loc_start = Lexing.lexeme_start_p lexbuf;
-                     Location.loc_end = Lexing.lexeme_end_p lexbuf;
-                     Location.loc_ghost = false } in
-        prerr_endline @@ Format.asprintf "%a" Location.print loc';
-        let range = pos ~offset:5 lexbuf in
-        prerr_endline @@ Lexing.lexeme lexbuf;
-        let loc' = { Location.loc_start = Lexing.lexeme_start_p lexbuf;
-                     Location.loc_end = Lexing.lexeme_end_p lexbuf;
-                     Location.loc_ghost = false } in
-        prerr_endline @@ Format.asprintf "%a" Location.print loc';
+        let range = pos ~offset:1 lexbuf in
         Variable ({ content; range }, { content = "%s"; range })
       }
   | '$' '(' (value_id as content) ')'
       {
-        let range = pos ~offset:3 lexbuf in
+        let range = pos ~offset:2 lexbuf in
         Variable ({ content; range}, { content = "%s"; range})
       }
   (* Values with printf-style formats *)
   | '$' '{' (any_expr as vid) ',' (whitespace as w)? (format as fmt) '}'
       {
-        let base_offset = 6 in
+        let base_offset = 2 in
         let p_vid = pos ~offset:base_offset lexbuf in
         let w_length =
           match w with

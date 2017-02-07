@@ -22,10 +22,10 @@ let () =
   [%fmt p "${int, int_formatter} looks different than ${float, float_formatter}!"]
 
 let () = [%fmt p
-{|This is a $story
+{xxx|This is a $storyy
 That is still being ${toldd, %s}
 But before we get ${"started", string_formatter}
-We're all gonna get $$old|}
+We're all gonna get $$old|xxx}
 ]
 
 let f () () =
