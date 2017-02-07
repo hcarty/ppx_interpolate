@@ -1,0 +1,3 @@
+true: debug, bin_annot
+true: package(ppx_tools.metaquot)
+<src>: include
