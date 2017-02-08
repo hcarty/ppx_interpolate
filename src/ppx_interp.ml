@@ -47,7 +47,7 @@ let rec tokenize parent_location lexbuf delim (fmt_string, args) =
   | None ->
     let fmt =
       String.concat "" (List.rev fmt_string)
-      |> Ast_helper.Const.string
+      |> Ast_helper.Const.string ?quotation_delimiter:delim
       |> Ast_helper.Exp.constant
       |> (fun e -> set_loc e parent_location)
     in
