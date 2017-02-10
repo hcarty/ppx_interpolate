@@ -32,11 +32,6 @@ rule token = parse
         let range = pos ~offset:1 lexbuf in
         Variable ({ content; range }, { content = "%s"; range })
       }
-  | '$' '(' (value_id as content) ')'
-      {
-        let range = pos ~offset:2 lexbuf in
-        Variable ({ content; range}, { content = "%s"; range})
-      }
   (* Values with printf-style formats *)
   | '$' '{' (any_expr as vid) ',' (whitespace as w)? (format as fmt) '}'
       {
@@ -90,16 +85,3 @@ rule token = parse
         let content = Lexing.lexeme lexbuf in
         Literal { content; range = pos lexbuf }
       }
-(*
-and ex acc = parse
-  (* For the future... this is where any special quoting would go *)
-  | any_char as c
-      { ex (c :: acc) lexbuf }
-  | eof
-      {
-        let chars = Array.of_list (List.rev acc) in
-        let s = Bytes.make (Array.length chars) ' ' in
-        Array.iteri (fun i c -> Bytes.set s i c) chars;
-        Bytes.to_string s
-      }
-*)
