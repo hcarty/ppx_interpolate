@@ -4,17 +4,19 @@ open Parsetree
 let add_locs ~base ~offset extra =
   let open Lexing in
   { base with
-(*
-    pos_lnum = base.pos_lnum + offset.pos_lnum;
+    pos_lnum = base.pos_lnum + offset.pos_lnum - 1;
     pos_bol = base.pos_bol + offset.pos_bol;
-*)
     pos_cnum = base.pos_cnum + offset.pos_cnum + extra; }
 
 let make_location { Location.loc_start; _ } (s, e) delim =
   let extra =
     match delim with
     | None -> 1
-    | Some s -> String.length s + 2
+    | Some d ->
+      if s.Lexing.pos_lnum > 1 then
+        0
+      else
+        String.length d + 2
   in
   { Location.loc_start = add_locs ~base:loc_start ~offset:s extra;
     loc_end = add_locs ~base:loc_start ~offset:e extra;
@@ -27,6 +29,8 @@ let rec tokenize parent_location lexbuf delim (fmt_string, args) =
   let result =
     let open Interp_types in
     match Interp_lexer.token lexbuf with
+    | Newline nl (** Newline, with the literal representation *) ->
+      Some (nl :: fmt_string, args)
     | Literal lit (** Literal string *) ->
       Some (lit.content :: fmt_string, args)
     | Variable (v, directive) (** ${expr, "%printf-like-format"} *) ->

@@ -71,38 +71,20 @@ rule token = parse
           { content = func; range = p_func}
         )
       }
-  (* Everything else! *)
-  | '\\' '\n'
-      { Literal { content = ""; range = pos lexbuf } }
+  (* Special character handling *)
   | '$' '$'
       { Literal { content = "$"; range = pos lexbuf } }
-  | '\\' [ '0'-'9' ] [ '0'-'9' ] [ '0'-'9' ]
-      {
-        let s = Lexing.lexeme lexbuf in
-        let n = int_of_string(String.sub s 1 3) in
-        let content = Printf.sprintf "%c" (Char.chr n) in
-        Literal { content; range = pos lexbuf }
-      }
-  | '\\' 'x' [ '0'-'9' 'a'-'f' 'A'-'F' ] [ '0'-'9' 'a'-'f' 'A'-'F' ]
-      {
-        let s = Lexing.lexeme lexbuf in
-        let n = int_of_string("0" ^ String.sub s 1 3) in
-        let content = Printf.sprintf "%c" (Char.chr n) in
-        Literal { content; range = pos lexbuf }
-      }
-
-  | '\\' _
-      {
-        let content = Lexing.lexeme lexbuf in
-        Literal { content; range = pos lexbuf }
-      }
-  | [^ '$' '\\']+
-      {
-        let content = Lexing.lexeme lexbuf in
-        Literal { content; range = pos lexbuf }
-      }
+  | "\n" | "\r" | "\r\n"
+      { Lexing.new_line lexbuf; Newline (Lexing.lexeme lexbuf) }
   | eof
       { Textend }
+  (* Other content *)
+  | [^ '$' '\\' '\r' '\n']+
+      {
+        let content = Lexing.lexeme lexbuf in
+        Literal { content; range = pos lexbuf }
+      }
+  (* Anything else that may fall through the cracks *)
   | _
       {
         let content = Lexing.lexeme lexbuf in
