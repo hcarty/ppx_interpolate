@@ -33,7 +33,7 @@ let rec tokenize parent_location lexbuf delim (fmt_string, args) =
       Some (nl :: fmt_string, args)
     | Literal lit (** Literal string *) ->
       Some (lit.content :: fmt_string, args)
-    | Variable (v, directive) (** ${expr, "%printf-like-format"} *) ->
+    | Variable (v, directive) (** ${expr, %printf-like-format} *) ->
       let v_expr = Parse.expression @@ Lexing.from_string v.content in
       let location = make_location parent_location v.range delim in
       Some (directive.content :: fmt_string, set_loc v_expr location :: args)
@@ -79,14 +79,6 @@ let fmt_mapper _args =
                   let args = tokenize loc (Lexing.from_string fmt) delim ([], []) in
                   let generated = { exp with pexp_desc = Pexp_apply (f, rest @ args) } in
                   generated
-(*
-                  let pexp_loc =
-                    (* [loc_ghost] tells the compiler and other tools than this is
-                       generated code *)
-                    { generated.pexp_loc with Location.loc_ghost = true }
-                  in
-                  { generated with pexp_loc }
-*)
               end
             | _ -> default_mapper.expr mapper expr
           end

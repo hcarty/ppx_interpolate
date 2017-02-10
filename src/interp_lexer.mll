@@ -21,13 +21,7 @@ let curly_braces = [ '{' '}' ]
 let any_expr = (any_char#curly_braces)+
 
 (* For matching printf-like format descriptors *)
-let format = '%'
-             [ '0' '-' ' ' ]*    (* no more modifiers are supported by Ocaml *)
-             ['0'-'9']*
-             ( '.' ['0'-'9']* )?
-             ( ( ['L' 'l' 'n'] [ 'd' 'i' 'u' 'x' 'X' 'o' ])
-               | [ 'd' 'i' 'u' 'x' 'X' 's' 'c' 'f' 'e' 'E' 'g' 'G' 'b' 't' ]
-             )
+let format = '%' (any_char#curly_braces)+
 
 rule token = parse
   (* Simple values *)
@@ -56,18 +50,24 @@ rule token = parse
         let fmt_offset = base_offset + String.length vid + 1 + w_length in
         let p_fmt = pos ~offset:fmt_offset lexbuf in
         Variable (
-          { content = ex [] (Lexing.from_string vid); range = p_vid},
+          { content = vid; range = p_vid},
           { content = fmt; range = p_fmt}
         )
       }
   (* Custom (value expression, printer expression) pairs *)
-  | '$' '{' (any_expr as vid) ',' (any_expr as func) '}'
+  | '$' '{' (any_expr as vid) ',' (whitespace as w)? (any_expr as func) '}'
       {
-        let p_vid = pos ~offset:3 lexbuf in
-        let func_offset = 3 + String.length vid + 1 in
+        let base_offset = 2 in
+        let p_vid = pos ~offset:base_offset lexbuf in
+        let w_length =
+          match w with
+          | None -> 0
+          | Some s -> String.length s
+        in
+        let func_offset = base_offset + String.length vid + 1 + w_length in
         let p_func = pos ~offset:func_offset lexbuf in
         Custom_variable (
-          { content = ex [] (Lexing.from_string vid); range = p_vid },
+          { content = vid; range = p_vid },
           { content = func; range = p_func}
         )
       }
@@ -90,6 +90,7 @@ rule token = parse
         let content = Lexing.lexeme lexbuf in
         Literal { content; range = pos lexbuf }
       }
+(*
 and ex acc = parse
   (* For the future... this is where any special quoting would go *)
   | any_char as c
@@ -101,3 +102,4 @@ and ex acc = parse
         Array.iteri (fun i c -> Bytes.set s i c) chars;
         Bytes.to_string s
       }
+*)
