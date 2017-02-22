@@ -25,38 +25,52 @@ let make_location { Location.loc_start; _ } (s, e) delim =
 let set_loc expr pexp_loc =
   { expr with pexp_loc }
 
-let rec tokenize parent_location lexbuf delim (fmt_string, args) =
+let const_string delim s loc =
+  let expr =
+    Ast_helper.Const.string ?quotation_delimiter:delim s
+    |> Ast_helper.Exp.constant
+  in
+  set_loc expr loc
+
+let rec tokenize parent_location lexbuf delim (fmt, args) =
   let result =
     let open Interp_types in
     match Interp_lexer.token lexbuf with
     | Newline nl (** Newline, with the literal representation *) ->
-      Some (nl :: fmt_string, args)
+      Some (const_string delim nl parent_location :: fmt, args)
     | Literal lit (** Literal string *) ->
-      Some (lit.content :: fmt_string, args)
+      Some (const_string delim lit.content parent_location :: fmt, args)
     | Variable (v, directive) (** ${expr, %printf-like-format} *) ->
-      let v_expr = Parse.expression @@ Lexing.from_string v.content in
-      let location = make_location parent_location v.range delim in
-      Some (directive.content :: fmt_string, set_loc v_expr location :: args)
-    | Custom_variable (v, fmt) (** [${expr, expr}] *) ->
+      let v_arg =
+        let v_expr = Parse.expression @@ Lexing.from_string v.content in
+        let location = make_location parent_location v.range delim in
+        set_loc v_expr location
+      in
+      let directive_fmt =
+        let location = make_location parent_location directive.range delim in
+        const_string delim directive.content location
+      in
+      Some (directive_fmt :: fmt, v_arg :: args)
+    | Custom_variable (v, v_fmt) (** [${expr, expr}] *) ->
       let v_expr = Parse.expression @@ Lexing.from_string v.content in
       let v_location = make_location parent_location v.range delim in
-      let fmt_expr = Parse.expression @@ Lexing.from_string fmt.content in
-      let fmt_location = make_location parent_location fmt.range delim in
-      Some ("%a" :: fmt_string, (set_loc v_expr v_location) :: (set_loc fmt_expr fmt_location) :: args)
+      let fmt_expr = Parse.expression @@ Lexing.from_string v_fmt.content in
+      let fmt_location = make_location parent_location v_fmt.range delim in
+      Some (const_string delim "%a" parent_location :: fmt, (set_loc v_expr v_location) :: (set_loc fmt_expr fmt_location) :: args)
     | Textend (** The end of the quoted text *) ->
       None
   in
   match result with
   | Some accu -> tokenize parent_location lexbuf delim accu
   | None ->
-    let fmt =
-      String.concat "" (List.rev fmt_string)
-      |> Ast_helper.Const.string ?quotation_delimiter:delim
-      |> Ast_helper.Exp.constant
-      |> (fun e -> set_loc e parent_location)
+    let fmt_expr =
+      List.fold_left (
+        fun accu part ->
+          Ast_helper.Exp.apply [%expr ( ^^ )] [Asttypes.Nolabel, part; Asttypes.Nolabel, accu]
+      ) (const_string delim "" parent_location) fmt
     in
     let args = List.rev_map (fun e -> Asttypes.Nolabel, e) args in
-    (Asttypes.Nolabel, fmt) :: args
+    (Asttypes.Nolabel, fmt_expr) :: args
 
 let rec last l accu =
   match l with
