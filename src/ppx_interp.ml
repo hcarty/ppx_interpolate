@@ -32,7 +32,7 @@ let const_string delim s loc =
   in
   set_loc expr loc
 
-let rec tokenize parent_location lexbuf delim (fmt, args) =
+let rec tokenize parent_location lexbuf delim label (fmt, args) =
   let result =
     let open Interp_types in
     match Interp_lexer.token lexbuf with
@@ -61,7 +61,7 @@ let rec tokenize parent_location lexbuf delim (fmt, args) =
       None
   in
   match result with
-  | Some accu -> tokenize parent_location lexbuf delim accu
+  | Some accu -> tokenize parent_location lexbuf delim label accu
   | None ->
     let fmt_expr =
       List.fold_left (
@@ -70,12 +70,16 @@ let rec tokenize parent_location lexbuf delim (fmt, args) =
       ) (const_string delim "" parent_location) fmt
     in
     let args = List.rev_map (fun e -> Asttypes.Nolabel, e) args in
-    (Asttypes.Nolabel, fmt_expr) :: args
+    (label, fmt_expr) :: args
 
 let rec last l accu =
   match l with
   | [] -> None
-  | [Asttypes.Nolabel, { pexp_desc = Pexp_constant (Pconst_string (fmt, delim)); pexp_loc }] -> Some (fmt, delim, pexp_loc, List.rev accu)
+  | [label, [%expr [%fmt [%e? exp]]]] ->
+    begin match exp with
+      | { pexp_desc = Pexp_constant (Pconst_string (fmt, delim)); pexp_loc } -> Some (label, fmt, delim, pexp_loc, List.rev accu)
+      | _ -> None
+    end
   | hd :: tl -> last tl (hd :: accu)
 
 let fmt_mapper _args =
@@ -83,21 +87,16 @@ let fmt_mapper _args =
     default_mapper with
     expr = (
       fun mapper expr ->
-        match expr with
-        | [%expr [%fmt [%e? exp]]] ->
-          begin match exp.pexp_desc with
-            | Pexp_apply (f, args) ->
-              begin match last args [] with
-                | None -> default_mapper.expr mapper expr
-                | Some (fmt, delim, loc, rest) ->
-                  let args = tokenize loc (Lexing.from_string fmt) delim ([], []) in
-                  let generated = { exp with pexp_desc = Pexp_apply (f, rest @ args) } in
-                  generated
-              end
-            | _ -> default_mapper.expr mapper expr
+        match expr.pexp_desc with
+        | Pexp_apply (f, args) ->
+          begin match last args [] with
+            | None -> default_mapper.expr mapper expr
+            | Some (label, fmt, delim, loc, rest) ->
+              let args = tokenize loc (Lexing.from_string fmt) delim label ([], []) in
+              let generated = { expr with pexp_desc = Pexp_apply (f, rest @ args) } in
+              generated
           end
-        | _ ->
-          default_mapper.expr mapper expr
+        | _ -> default_mapper.expr mapper expr
     )
   }
 
