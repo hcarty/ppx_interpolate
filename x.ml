@@ -10,20 +10,20 @@ let told = "TOLD"
 let started = "STARTED"
 
 let () =
-  [%fmt p "$story"]
+  p [%fmt "$story"]
 
 let () =
-  [%fmt p "${1, %d}"]
+  p [%fmt "${1, %d}"]
 
 let () =
-  [%fmt p {|${x, string_formatter}|}]
+  p [%fmt {|${x, string_formatter}|}]
 
 let () =
-  [%fmt p "${int, int_formatter} looks different than ${float, float_formatter}!"]
+  p [%fmt "${int, int_formatter} looks different than ${float, float_formatter}!"]
 
-let () = [%fmt p
-{xxx|This is a $storyy
-That is still being ${toldd, %s}
+let () = p [%fmt
+{xxx|This is a $story
+That is still being ${told, %s}
 But before we get ${"started", string_formatter}
 We're all gonna get $$old|xxx}
 ]
@@ -32,4 +32,10 @@ let f () () =
   Printf.ksprintf print_endline
 
 let () =
-  [%fmt f () () "$x"]
+  f () () [%fmt "$x"]
+
+let g () ~fmt =
+  Printf.ksprintf print_endline fmt
+
+let () =
+  g () ~fmt:[%fmt "$story"]
